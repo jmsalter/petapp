@@ -1,0 +1,8 @@
+services:
+  animal-picture-app:
+    build:
+      context: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data

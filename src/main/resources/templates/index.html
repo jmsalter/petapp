@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animal Picture App</title>
+    <style>
+        :root {
+            --bg: #f7f1e8;
+            --panel: rgba(255, 252, 247, 0.92);
+            --ink: #1d1d1b;
+            --accent: #c76b2d;
+            --accent-dark: #8a4317;
+            --line: #e3d2bf;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at top left, rgba(199, 107, 45, 0.25), transparent 30%),
+                linear-gradient(135deg, #f5ede2, var(--bg));
+            min-height: 100vh;
+        }
+
+        main {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 32px 20px 48px;
+        }
+
+        .hero {
+            display: grid;
+            gap: 24px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 18px 40px rgba(86, 53, 26, 0.08);
+            backdrop-filter: blur(6px);
+        }
+
+        h1 {
+            font-size: clamp(2.4rem, 6vw, 4.5rem);
+            line-height: 0.95;
+            margin: 0 0 12px;
+        }
+
+        p {
+            line-height: 1.6;
+        }
+
+        form {
+            display: grid;
+            gap: 16px;
+        }
+
+        label {
+            display: grid;
+            gap: 8px;
+            font-weight: 700;
+        }
+
+        select, input, button {
+            font: inherit;
+            border-radius: 14px;
+            padding: 12px 14px;
+            border: 1px solid #c9b29c;
+        }
+
+        button {
+            cursor: pointer;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            font-weight: 700;
+        }
+
+        button:hover {
+            background: var(--accent-dark);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status {
+            min-height: 24px;
+            font-weight: 700;
+        }
+
+        .gallery {
+            margin-top: 28px;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.82);
+        }
+
+        .card img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 14px;
+            background: #f0e6dc;
+        }
+
+        .meta {
+            margin-top: 10px;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <section class="hero">
+        <div class="panel">
+            <p><strong>Tech Challenge</strong></p>
+            <h1>Animal Picture App</h1>
+            <p>Fetch random cat, dog, or bear images, store them in the embedded database, and preview the latest saved result.</p>
+        </div>
+        <div class="panel">
+            <form id="picture-form">
+                <label>
+                    Animal Type
+                    <select name="animalType">
+                        <option value="cat">Cat</option>
+                        <option value="dog">Dog</option>
+                        <option value="bear">Bear</option>
+                    </select>
+                </label>
+                <label>
+                    How many pictures to fetch
+                    <input name="count" type="number" min="1" max="10" value="1">
+                </label>
+                <div class="actions">
+                    <button type="submit">Fetch & Save</button>
+                    <button type="button" id="latest-button">Load Latest</button>
+                </div>
+                <div class="status" id="status"></div>
+            </form>
+        </div>
+    </section>
+
+    <section class="gallery" id="gallery"></section>
+</main>
+
+<script>
+    const form = document.getElementById("picture-form");
+    const latestButton = document.getElementById("latest-button");
+    const statusEl = document.getElementById("status");
+    const galleryEl = document.getElementById("gallery");
+
+    function currentAnimal() {
+        return form.animalType.value;
+    }
+
+    function renderPictures(pictures) {
+        galleryEl.innerHTML = "";
+
+        if (!pictures.length) {
+            galleryEl.innerHTML = "<div class='card'>No pictures to display.</div>";
+            return;
+        }
+
+        pictures.forEach((picture) => {
+            const article = document.createElement("article");
+            article.className = "card";
+            article.innerHTML = `
+                <img src="${picture.contentUrl}" alt="${picture.animalType} picture">
+                <div class="meta">
+                    <div><strong>${picture.animalType.toUpperCase()}</strong></div>
+                    <div>${picture.width} x ${picture.height}</div>
+                    <div>${new Date(picture.fetchedAt).toLocaleString()}</div>
+                    <div><a href="${picture.sourceUrl}" target="_blank" rel="noreferrer">Source</a></div>
+                </div>
+            `;
+            galleryEl.appendChild(article);
+        });
+    }
+
+    async function loadLatest() {
+        statusEl.textContent = "Loading latest stored picture...";
+
+        try {
+            const response = await fetch(`/api/pictures/${currentAnimal()}/latest`);
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error((payload.details || ["Request failed"]).join(", "));
+            }
+
+            renderPictures([payload]);
+            statusEl.textContent = "Latest stored picture loaded.";
+        } catch (error) {
+            statusEl.textContent = error.message;
+            renderPictures([]);
+        }
+    }
+
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        statusEl.textContent = "Fetching and saving pictures...";
+
+        try {
+            const response = await fetch("/api/pictures", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    animalType: currentAnimal(),
+                    count: Number(form.count.value)
+                })
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error((payload.details || ["Request failed"]).join(", "));
+            }
+
+            renderPictures(payload);
+            statusEl.textContent = `Stored ${payload.length} picture(s).`;
+        } catch (error) {
+            statusEl.textContent = error.message;
+            renderPictures([]);
+        }
+    });
+
+    latestButton.addEventListener("click", loadLatest);
+</script>
+</body>
+</html>
