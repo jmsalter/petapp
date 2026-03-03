@@ -1,0 +1,537 @@
+Animal Picture App - My Walkthrough Notes
+=========================================
+
+What this project is
+--------------------
+This is a small Java web app. It does 3 main jobs:
+
+1. It receives a request asking for cat, dog, or bear pictures.
+2. It goes to an image website, downloads the pictures, and stores them.
+3. It lets me ask for the latest stored picture later.
+
+I built it as a Spring Boot app with Maven and an embedded H2 database.
+
+
+Very simple explanation of the tools
+------------------------------------
+Java
+Link: https://www.java.com/
+Plain meaning:
+Java is the programming language used to write the app.
+
+Maven
+Link: https://maven.apache.org/
+Plain meaning:
+Maven is the build tool. It is the thing that downloads libraries, runs tests, and builds the app.
+
+Spring Boot
+Link: https://spring.io/projects/spring-boot
+Plain meaning:
+Spring Boot is a framework that takes a lot of normal Java setup work and does it for me. It helps me create a web app faster.
+
+Spring Web
+Link: https://docs.spring.io/spring-boot/reference/web/servlet.html
+Plain meaning:
+This is the part that gives me REST endpoints like /api/pictures.
+
+Spring Data JPA
+Link: https://spring.io/projects/spring-data-jpa
+Plain meaning:
+This is the part that helps Java objects get stored in the database.
+
+Thymeleaf
+Link: https://www.thymeleaf.org/
+Plain meaning:
+This is the simple HTML template engine used for the basic UI page.
+
+H2 Database
+Link: https://h2database.com/html/main.html
+Plain meaning:
+H2 is a lightweight database that can live inside the app. I used it so the app can run without needing a separate database install.
+
+Docker
+Link: https://www.docker.com/
+Plain meaning:
+Docker lets the app run inside a container so it behaves the same way on different machines.
+
+VS Code
+Link: https://code.visualstudio.com/
+Plain meaning:
+This is just the editor/IDE I can use to open the project.
+
+
+Why I chose this setup
+----------------------
+If somebody asks "why this stack?", my short answer is:
+
+"I used Java because the brief asked for Java if possible. I used Spring Boot because it is a fast way to build a REST service in Java. I used H2 because the brief wanted a portable database and H2 runs inside the app without extra setup. I used Maven because it is the standard Java build tool and works well in VS Code."
+
+
+Big picture flow
+----------------
+Robot version:
+
+1. User sends HTTP request to my app.
+2. Spring Boot receives the request.
+3. Controller reads the request and decides what service method to call.
+4. Service decides what work must be done.
+5. If new images are needed, service calls the remote image client.
+6. Remote image client downloads image bytes from cat/dog/bear provider.
+7. Service creates database objects and saves them through the repository.
+8. Repository writes the record into H2.
+9. Controller returns JSON back to the user.
+10. If the browser UI is used, the page calls the same REST endpoints with JavaScript.
+
+
+Main endpoints
+--------------
+POST /api/pictures
+
+Purpose:
+Fetch and store one or more pictures for a chosen animal.
+
+Example input:
+{
+  "animalType": "cat",
+  "count": 3
+}
+
+Robot steps:
+
+1. Read animalType and count from JSON.
+2. Validate them.
+3. Loop count times.
+4. Download a random image each time.
+5. Save each image in the database.
+6. Return a list of saved picture records.
+
+
+GET /api/pictures/{animalType}/latest
+
+Purpose:
+Return the latest stored picture for that animal.
+
+Robot steps:
+
+1. Read animal type from the URL.
+2. Ask the database for the newest matching record.
+3. If found, return its metadata.
+4. If not found, return a not found error.
+
+
+GET /api/pictures/{id}/content
+
+Purpose:
+Return the actual stored image bytes.
+
+Robot steps:
+
+1. Read picture id from the URL.
+2. Find the record in the database.
+3. Read the stored byte array.
+4. Send it back as image content.
+
+
+How the code is organised
+-------------------------
+pom.xml
+This is the Maven file. It says:
+
+- which libraries the project needs
+- which Java version to use
+- how to build the app
+
+
+AnimalPictureAppApplication.java
+This is the entry point.
+
+Pseudo code:
+start Spring Boot application
+
+This is like saying:
+"Boot the whole system now."
+
+
+domain package
+--------------
+AnimalType.java
+This is the enum for CAT, DOG, BEAR.
+
+Why it matters:
+It stops random values being used.
+
+Pseudo code:
+allowed animals = [cat, dog, bear]
+
+
+AnimalPicture.java
+This is the database entity.
+
+Think of it as one saved picture record.
+
+It stores:
+
+- id
+- animal type
+- source URL
+- content type
+- width
+- height
+- image bytes
+- fetched time
+
+Pseudo code:
+record AnimalPicture:
+  id
+  animalType
+  sourceUrl
+  contentType
+  width
+  height
+  imageData
+  fetchedAt
+
+
+dto package
+-----------
+DTO means Data Transfer Object.
+
+Simple meaning:
+These are the shapes of data going into or out of the API.
+
+PictureFetchRequest.java
+Input JSON for fetching images.
+
+PictureResponse.java
+Output JSON sent back to the caller.
+
+ErrorResponse.java
+Standard error JSON.
+
+
+persistence package
+-------------------
+AnimalPictureRepository.java
+
+This is the database access layer.
+
+I did not write SQL manually here.
+Spring Data JPA creates the database logic based on method names.
+
+Important method:
+findTopByAnimalTypeOrderByFetchedAtDescIdDesc(...)
+
+Plain meaning:
+"Find the newest record for this animal type."
+
+
+service package
+---------------
+This is the business logic layer.
+
+AnimalImageClient.java
+This is an interface.
+
+Plain meaning:
+It defines the rule:
+"Any image client must know how to fetch a random image."
+
+
+DownloadedImage.java
+Small record class to hold downloaded image details before saving.
+
+
+RemoteAnimalImageClient.java
+This is the part that calls the outside image websites.
+
+What it does:
+
+1. Pick a random width and height.
+2. Build the correct URL for cat/dog/bear.
+3. Use Java HttpClient to download the image bytes.
+4. Return the data to the service layer.
+
+Pseudo code:
+choose random width
+choose random height
+build provider URL
+send HTTP GET
+if response not OK -> error
+return downloaded image bytes
+
+Note:
+For cats I used placekittens.com instead of placekitten.com because the original service was unreliable and the brief allowed an alternative.
+
+
+AnimalPictureService.java
+This is the main business logic.
+
+Method: fetchAndStorePictures(animalType, count)
+
+Robot steps:
+
+1. Create empty result list.
+2. Repeat count times:
+3. Ask image client to fetch a picture.
+4. Create AnimalPicture object.
+5. Copy fields into it.
+6. Save it using repository.
+7. Add saved object to result list.
+8. Return result list.
+
+Method: findLatestPicture(animalType)
+
+Robot steps:
+
+1. Ask repository for newest record.
+2. If missing, throw not found error.
+3. Return record.
+
+Method: findPictureById(id)
+
+Robot steps:
+
+1. Ask repository for id.
+2. If missing, throw not found error.
+3. Return record.
+
+
+controller package
+------------------
+This is the web layer.
+
+AnimalPictureController.java
+This exposes the REST endpoints.
+
+Job:
+Take HTTP request -> call service -> return response.
+
+It should stay thin.
+Most real logic belongs in the service layer, not here.
+
+
+ViewController.java
+This serves the home page at /.
+
+Pseudo code:
+when user asks for /
+  return index.html template
+
+
+GlobalExceptionHandler.java
+This turns Java exceptions into clean HTTP error responses.
+
+Example:
+
+- bad input -> 400
+- not found -> 404
+- provider download failure -> 502
+
+Why this matters:
+Without it, users get ugly framework errors.
+
+
+resources
+---------
+application.properties
+
+This is the main config file.
+
+Important settings:
+
+- app name
+- H2 file database path
+- enable H2 console
+- JPA auto update schema
+
+Plain meaning of the database URL:
+jdbc:h2:file:./data/animal-picture-app
+
+This means:
+"Store the database in a local file under the data folder."
+
+
+templates/index.html
+
+This is the simple UI page.
+
+What it does:
+
+1. Shows a small form.
+2. Lets user choose animal type and count.
+3. Sends requests to the REST API using JavaScript fetch.
+4. Shows the returned images.
+
+Important point:
+The UI does not do special business logic.
+It just calls the API.
+
+
+Tests
+-----
+AnimalPictureServiceTest.java
+
+This tests the service logic.
+
+Example idea:
+"If I ask for 2 cat pictures, does the service save 2 pictures?"
+
+
+AnimalPictureControllerTest.java
+
+This tests the controller behaviour.
+
+Example idea:
+"If I call the endpoint, do I get the right JSON or image bytes back?"
+
+
+How the app runs locally
+------------------------
+Robot version:
+
+1. I run ./mvnw spring-boot:run
+2. Maven checks dependencies and starts Spring Boot
+3. Spring Boot starts Tomcat web server
+4. H2 database opens from local file
+5. Endpoints become available on port 8080
+
+
+How the app runs in Docker
+--------------------------
+Robot version:
+
+1. Docker reads Dockerfile
+2. First stage uses Maven image to build the jar
+3. Second stage copies jar into smaller Java runtime image
+4. docker compose starts container
+5. Container exposes port 8080
+6. App runs inside container
+7. Local ./data folder is mounted so database persists
+
+
+Simple explanation of Maven wrapper
+-----------------------------------
+Files:
+- mvnw
+- mvnw.cmd
+- .mvn/wrapper/...
+
+Plain meaning:
+This lets the project download and use Maven even if Maven is not already installed.
+
+So instead of saying:
+mvn test
+
+I can say:
+./mvnw test
+
+That makes the project easier to run on another machine.
+
+
+Likely interview questions and simple answers
+---------------------------------------------
+What is Spring Boot?
+It is a Java framework that makes it much easier to create and run web applications. It auto-configures a lot of the setup.
+
+What is Maven?
+It is the build tool. It downloads libraries, runs tests, and packages the app.
+
+What is H2?
+It is a lightweight embedded database. I used it so the app can run without needing a separate database server.
+
+Why not PostgreSQL?
+For a real production app I would seriously consider PostgreSQL. For this challenge, H2 matched the "portable and easy to run anywhere" requirement.
+
+Why store image bytes in the database?
+Because it keeps the app self-contained. I do not need a separate file store for this challenge.
+
+What is a controller?
+The web-facing layer. It handles HTTP requests and calls the service layer.
+
+What is a service?
+The business logic layer. It decides what work to do.
+
+What is a repository?
+The database access layer.
+
+What is an entity?
+A Java object that maps to a database table.
+
+What is a DTO?
+A Java object used to move data in and out of the API.
+
+Why split the code into layers?
+Because it keeps responsibilities clean:
+
+- controller = HTTP
+- service = logic
+- repository = database
+
+That makes the code easier to test and change.
+
+
+If I had to explain one request from start to finish
+----------------------------------------------------
+Example: POST /api/pictures with bear + count 2
+
+Robot walk:
+
+1. Request reaches AnimalPictureController.
+2. Controller reads JSON into PictureFetchRequest.
+3. Controller calls AnimalPictureService.fetchAndStorePictures(BEAR, 2).
+4. Service loops twice.
+5. Each loop calls RemoteAnimalImageClient.fetchRandomImage(BEAR).
+6. Remote client builds a placebear URL with random size.
+7. Remote client downloads image bytes.
+8. Service creates AnimalPicture object.
+9. Service stores it through AnimalPictureRepository.
+10. H2 saves the row.
+11. Service returns saved objects.
+12. Controller converts them to PictureResponse objects.
+13. JSON response goes back to caller.
+
+
+If I had to explain the home page flow
+--------------------------------------
+1. User opens /
+2. Spring returns index.html
+3. User picks animal and count
+4. JavaScript sends POST /api/pictures
+5. API returns saved picture metadata
+6. Browser shows the images using /api/pictures/{id}/content
+
+
+What I would say if asked about tradeoffs
+-----------------------------------------
+Good points:
+
+- simple to run
+- Java-focused as requested
+- embedded DB so no external setup
+- tests included
+- Docker included
+- clean layering
+
+Tradeoffs:
+
+- H2 is great for portability but not my first choice for production
+- storing image bytes in DB is simple but could become heavy at scale
+- UI is intentionally basic because the challenge said simple UI was enough
+
+
+Files I would revise first if I had more time
+---------------------------------------------
+1. RemoteAnimalImageClient.java
+I would add retries and maybe fallback providers.
+
+2. AnimalPictureService.java
+I would add more resilience and maybe better duplicate handling.
+
+3. Tests
+I would add integration tests against the real DB path and maybe container tests.
+
+
+Good short summary I can say out loud
+-------------------------------------
+"This is a Java Spring Boot microservice that fetches random cat, dog, or bear images from public image providers, stores the image bytes and metadata in an embedded H2 database, and exposes REST endpoints to fetch new pictures and retrieve the latest stored one. I used Maven for the build, included automated tests, and containerized it with Docker so it runs both locally and in a portable way."
+

@@ -1,0 +1,117 @@
+Animal Picture App - Interview Questions and Answers
+====================================================
+
+What does the app do?
+---------------------
+It fetches random cat, dog, or bear pictures from public image providers, stores them in an embedded H2 database, and exposes REST endpoints to fetch new pictures and retrieve the latest stored one.
+
+
+Why did you choose Java?
+------------------------
+The brief suggested Java where possible, and Java is a good fit for this kind of microservice.
+
+
+What is Spring Boot?
+--------------------
+Spring Boot is a Java framework that makes it easier to build and run applications. It auto-configures a lot of the setup, including the embedded web server and request handling.
+
+
+What is Maven?
+--------------
+Maven is the build tool. It manages dependencies, runs tests, and packages the application.
+
+
+What is H2?
+-----------
+H2 is a lightweight embedded database. I used it because it keeps the solution portable and avoids needing a separate database installation.
+
+
+Why did you use H2 instead of PostgreSQL?
+-----------------------------------------
+For this challenge, H2 matched the requirement for a portable build with no local database dependency. For a production system I would strongly consider PostgreSQL.
+
+
+What is an embedded database?
+-----------------------------
+It means the database runs as part of the application rather than as a separate database server.
+
+
+What is a REST API?
+-------------------
+It is an HTTP-based interface where clients call endpoints like /api/pictures to perform actions or get data.
+
+
+What is a controller?
+---------------------
+The controller is the layer that receives HTTP requests and returns HTTP responses.
+
+
+What is a service?
+------------------
+The service contains the main business logic. In this app it decides how pictures are fetched and stored.
+
+
+What is a repository?
+---------------------
+The repository is the database access layer. It loads and saves data.
+
+
+What is an entity?
+------------------
+An entity is a Java class that maps to a database table. In this project AnimalPicture is the entity.
+
+
+What is a DTO?
+--------------
+A DTO is a Data Transfer Object. It is used to shape API request or response data.
+
+
+How does the app fetch pictures?
+--------------------------------
+The service calls the RemoteAnimalImageClient, which builds a URL for the chosen animal provider and downloads the image bytes using Java HttpClient.
+
+
+Why are images stored in the database?
+--------------------------------------
+To keep the app self-contained and portable. It avoids needing a separate file storage mechanism for this challenge.
+
+
+How do you get the latest picture?
+----------------------------------
+The service asks the repository for the newest record for the chosen animal type, ordered by fetch time.
+
+
+How is error handling done?
+---------------------------
+There is a global exception handler that converts Java exceptions into proper HTTP responses such as 400, 404, or 502.
+
+
+How is the app tested?
+----------------------
+There are tests for the service and controller behaviour. They check the core logic and API responses.
+
+
+How does the UI work?
+---------------------
+The UI is a simple HTML page that calls the REST API with JavaScript fetch requests. It is a thin layer over the backend.
+
+
+What does Docker do here?
+-------------------------
+Docker packages the application in a container so it can run in a predictable way across machines. The Dockerfile builds the jar and then runs it in a smaller runtime image.
+
+
+What would you improve if you had more time?
+--------------------------------------------
+I would add more resilience around remote provider failures, more integration tests, and potentially move to PostgreSQL for a production-grade setup.
+
+
+Why did you separate the code into layers?
+------------------------------------------
+It makes the responsibilities clear and makes the code easier to test, explain, and maintain.
+
+
+What is the strongest point of this solution?
+---------------------------------------------
+It is portable, easy to run, and cleanly structured. It satisfies both local and containerized execution with minimal setup.
+

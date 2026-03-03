@@ -1,0 +1,178 @@
+Animal Picture App - My Own Revision Notes
+==========================================
+
+What I built
+------------
+I built a small Java web app that lets a user ask for cat, dog, or bear pictures.
+The app downloads those pictures from public image websites and stores them in a local database.
+I can then ask the app for the latest stored picture for a given animal.
+
+
+What technologies I used and what they mean
+-------------------------------------------
+I used Java because the challenge suggested Java where possible.
+
+I used Spring Boot because it makes it much easier to build a web service in Java. It gives me a built-in web server, request handling, and a lot of setup for free.
+
+I used Maven as the build tool. Maven handles dependencies, tests, and packaging.
+
+I used H2 as the database. H2 is embedded, which means I do not need to install a separate database server. It stores data in a local file and is easy to ship with the app.
+
+I used Docker so the app can also run in a container with a predictable setup.
+
+
+How I think about the project structure
+--------------------------------------
+I split the project into layers because it keeps responsibilities clear.
+
+The controller layer handles HTTP requests.
+The service layer contains the main logic.
+The repository layer handles database access.
+The entity represents the database record.
+The DTOs represent data coming in and out of the API.
+
+That separation makes the code easier to test and easier to explain.
+
+
+How one request works in my head
+--------------------------------
+If somebody calls POST /api/pictures and asks for 2 dog pictures, this is what happens.
+
+First the controller receives the request.
+It reads the JSON body and passes the important values to the service.
+
+Then the service loops twice because the user asked for 2 pictures.
+Each time through the loop it calls the remote image client.
+
+The remote image client builds a URL for the dog image provider and downloads the image bytes.
+
+The service then creates an AnimalPicture object, fills in the fields, and saves it using the repository.
+
+The repository writes that record into the H2 database.
+
+After both pictures are saved, the controller converts them into response objects and sends JSON back to the caller.
+
+
+How the "latest picture" endpoint works
+---------------------------------------
+If somebody asks for the latest cat picture, the controller passes the animal type to the service.
+
+The service asks the repository for the newest record for that animal.
+
+The repository returns the latest one using the method name rule from Spring Data JPA.
+
+If there is no picture, the service throws a not found error.
+If there is one, the controller returns the metadata.
+
+
+How the actual image is returned
+--------------------------------
+The app stores the image bytes in the database.
+
+So when someone calls /api/pictures/{id}/content, the controller loads that record and sends the stored bytes back with the correct content type.
+
+That means the app is self-contained. It does not need a separate file store for this challenge.
+
+
+How the home page works
+-----------------------
+The home page is just a simple HTML page with some JavaScript.
+
+It lets the user choose an animal and a count.
+Then it calls the same API endpoints the backend already exposes.
+
+So the UI is basically a thin front end on top of the REST API.
+
+
+Why I think H2 was a sensible choice
+------------------------------------
+For a production system I might choose PostgreSQL.
+
+For this challenge, H2 made sense because:
+
+- it works without extra setup
+- it is portable
+- it can be included in the app itself
+- it satisfies the requirement not to depend on a local database install
+
+
+What I would say about Docker
+-----------------------------
+The Dockerfile builds the jar in one stage and then copies it into a smaller Java runtime image.
+
+That means the final container only needs the runtime, not the full build tools.
+
+docker-compose.yml starts the app and maps port 8080 so it is reachable from the host machine.
+
+
+What I would say if asked about testing
+---------------------------------------
+I added unit-style tests for the service and controller behaviour.
+
+The service test checks that images are fetched and saved correctly.
+The controller test checks the API responses and returned image content.
+
+The tests are there to show the main logic works and that the endpoints behave as expected.
+
+
+What I would say if asked about tradeoffs
+-----------------------------------------
+The design is intentionally simple.
+
+I chose portability and clarity over building something more complex than the challenge needed.
+
+The main tradeoffs are:
+
+- H2 is ideal for portability, but not my first production database choice
+- storing image bytes in the database is simple, but could become heavy at scale
+- the UI is basic because the challenge only needed a simple interface
+
+
+What I should remember about Spring Boot
+----------------------------------------
+Spring Boot is basically helping me by auto-configuring lots of common things.
+
+Instead of manually wiring a server, routing, and configuration, I mostly describe what I want and Spring Boot starts the app with sensible defaults.
+
+
+What I should remember about Maven
+----------------------------------
+Maven uses pom.xml.
+
+That file lists:
+
+- project info
+- dependencies
+- build plugins
+- Java version
+
+The wrapper files mean I can run the project with ./mvnw even if Maven is not installed globally.
+
+
+What I should remember about H2
+-------------------------------
+H2 is a lightweight Java database.
+
+In this project it is configured as a file database, so the data survives restarts.
+
+The path is:
+jdbc:h2:file:./data/animal-picture-app
+
+That means the database file lives inside the project data folder.
+
+
+What I think is the cleanest part of the design
+-----------------------------------------------
+Probably the separation of layers.
+
+The controller does not try to do too much.
+The service owns the flow.
+The repository owns the database access.
+
+That makes the system easier to reason about when I explain it.
+
+
+My short spoken summary
+-----------------------
+"I built a small Java Spring Boot service that downloads animal pictures from public sources, stores them in an embedded H2 database, and exposes REST endpoints to fetch new pictures and retrieve the latest saved one. I used Maven for building and testing, and Docker to make it portable."
+

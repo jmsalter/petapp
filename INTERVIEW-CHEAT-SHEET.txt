@@ -1,0 +1,143 @@
+Animal Picture App - Quick Cheat Sheet
+======================================
+
+What it is
+----------
+Small Java Spring Boot app that:
+
+1. fetches cat, dog, or bear pictures from public image sites
+2. stores them in an embedded H2 database
+3. exposes REST endpoints to fetch new pictures and get the latest stored one
+
+
+Stack in one line
+-----------------
+Java + Spring Boot + Maven + H2 + Docker
+
+
+Very short definitions
+----------------------
+Java
+The programming language.
+
+Spring Boot
+Framework that makes it easier to build and run Java web apps.
+
+Maven
+Build tool. It downloads dependencies, runs tests, and builds the jar.
+
+H2
+Embedded database stored in a local file. Good for portability.
+
+Docker
+Runs the app in a container so it behaves consistently.
+
+
+Main API endpoints
+------------------
+POST /api/pictures
+Fetches and stores pictures.
+
+GET /api/pictures/{animalType}/latest
+Returns the latest stored picture for that animal.
+
+GET /api/pictures/{id}/content
+Returns the actual image bytes.
+
+GET /
+Shows the simple HTML UI.
+
+
+Main flow
+---------
+1. Request comes into controller.
+2. Controller calls service.
+3. Service calls remote image client if new picture is needed.
+4. Remote image client downloads image.
+5. Service saves image through repository.
+6. Repository stores it in H2.
+7. Controller returns JSON or image bytes.
+
+
+Project layers
+--------------
+Controller
+Handles HTTP requests.
+
+Service
+Contains main business logic.
+
+Repository
+Handles database access.
+
+Entity
+Maps Java object to database table.
+
+DTO
+Defines API input/output shape.
+
+
+Important files
+---------------
+pom.xml
+Maven config and dependencies.
+
+AnimalPictureAppApplication.java
+Main app entry point.
+
+AnimalPictureController.java
+REST endpoints.
+
+AnimalPictureService.java
+Main business logic.
+
+RemoteAnimalImageClient.java
+Downloads images from remote sites.
+
+AnimalPictureRepository.java
+Database access.
+
+AnimalPicture.java
+Database entity.
+
+application.properties
+Main config including H2 database path.
+
+index.html
+Simple UI page.
+
+
+Good "why" answers
+------------------
+Why Spring Boot?
+Because it is a standard and fast way to build Java REST services.
+
+Why H2?
+Because the brief wanted something portable without requiring local DB setup.
+
+Why Maven?
+Because it is the standard Java build tool and works well in VS Code.
+
+Why Docker?
+Because the brief asked for containerization and it makes the app portable.
+
+
+Good short summary to say out loud
+----------------------------------
+"I built a Java Spring Boot service that fetches animal pictures from public providers, stores the image data and metadata in an embedded H2 database, and exposes REST endpoints to fetch new images and retrieve the latest stored one. I used Maven for the build, added tests, and containerized it with Docker."
+
+
+Commands I should remember
+--------------------------
+./mvnw test
+Run tests.
+
+./mvnw spring-boot:run
+Run locally.
+
+./mvnw clean package
+Build jar.
+
+docker compose up --build
+Run in container.
+
